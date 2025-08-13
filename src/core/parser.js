@@ -25,6 +25,9 @@ export function parse(rawText) {
       } else if (link.startsWith('ss://')) {
         const proxy = _parseSs(link);
         if (proxy) proxies.push(proxy);
+      } else if (link.startsWith('hysteria2://')) {
+        const proxy = _parseHysteria2(link);
+        if (proxy) proxies.push(proxy);
       }
     } catch (error) {
       console.error(`Failed to parse link: ${link}`, error);
@@ -203,6 +206,29 @@ function _parseTrojan(link) {
     servername: params.get('sni') || url.hostname,
     'skip-cert-verify': params.get('scv') === 'true' || false,
     tfo: params.get('tfo') === 'true' || false,
+  };
+
+  return proxy;
+}
+
+/**
+ * Parses a Hysteria2 link.
+ * @param {string} link The Hysteria2 link.
+ * @returns {object|null} A Mihomo proxy object or null if parsing fails.
+ */
+function _parseHysteria2(link) {
+  const url = new URL(link);
+  const params = url.searchParams;
+
+  const proxy = {
+    name: decodeURIComponent(url.hash).substring(1) || `${url.hostname}:${url.port}`,
+    type: 'hysteria2',
+    server: url.hostname,
+    port: parseInt(url.port, 10),
+    password: url.username,
+    auth: url.username,
+    'skip-cert-verify': params.get('insecure') === '1' || true, // Default to true based on user feedback
+    sni: params.get('sni') || url.hostname,
   };
 
   return proxy;
