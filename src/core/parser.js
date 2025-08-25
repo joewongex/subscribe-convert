@@ -1,40 +1,91 @@
+import yaml from 'js-yaml';
+
 /**
- * Parses a raw text input containing multiple proxy links and converts them to Mihomo format.
+ * Parses a raw text input (either links or YAML) and converts it to Mihomo format.
  * @param {string} rawText The raw text input from the user.
  * @returns {object[]} An array of Mihomo compatible proxy objects.
  */
 export function parse(rawText) {
   if (!rawText) {
-    return [];
+    return { success: true, data: [], error: null };
   }
 
-  const links = rawText.split(/\r?\n/).filter(link => link.trim() !== '');
+  const trimmedText = rawText.trim();
+
+  // 尝试解析为 YAML
+  try {
+    const data = yaml.load(trimmedText);
+    if (data && typeof data === 'object') {
+      // 如果是包含 proxies 字段的对象
+      if (data.proxies && Array.isArray(data.proxies)) {
+        return { success: true, data: data.proxies, error: null };
+      }
+      // 如果是数组
+      if (Array.isArray(data)) {
+        return { success: true, data: data, error: null };
+      }
+      // 如果是单个代理对象（包含 type 字段）
+      if (data.type && typeof data.type === 'string') {
+        return { success: true, data: [data], error: null };
+      }
+    }
+  } catch (e) {
+    // YAML 解析失败，回退到链接解析
+  }
+
+  // 回退到链接解析
+  const links = trimmedText.split(/\r?\n/).filter(link => link.trim() !== '');
   const proxies = [];
+  let hasValidLinks = false;
 
   for (const link of links) {
     try {
       if (link.startsWith('vless://')) {
         const proxy = _parseVless(link);
-        if (proxy) proxies.push(proxy);
+        if (proxy) {
+          proxies.push(proxy);
+          hasValidLinks = true;
+        }
       } else if (link.startsWith('vmess://')) {
         const proxy = _parseVmess(link);
-        if (proxy) proxies.push(proxy);
+        if (proxy) {
+          proxies.push(proxy);
+          hasValidLinks = true;
+        }
       } else if (link.startsWith('trojan://')) {
         const proxy = _parseTrojan(link);
-        if (proxy) proxies.push(proxy);
+        if (proxy) {
+          proxies.push(proxy);
+          hasValidLinks = true;
+        }
       } else if (link.startsWith('ss://')) {
         const proxy = _parseSs(link);
-        if (proxy) proxies.push(proxy);
+        if (proxy) {
+          proxies.push(proxy);
+          hasValidLinks = true;
+        }
       } else if (link.startsWith('hysteria2://')) {
         const proxy = _parseHysteria2(link);
-        if (proxy) proxies.push(proxy);
+        if (proxy) {
+          proxies.push(proxy);
+          hasValidLinks = true;
+        }
       }
     } catch (error) {
       console.error(`Failed to parse link: ${link}`, error);
     }
   }
 
-  return proxies;
+  // 如果没有解析出任何有效的代理，返回错误
+  if (proxies.length === 0 && !hasValidLinks) {
+    return {
+      success: false,
+      data: [],
+      error: '输入格式不正确！请检查输入是否为有效的 YAML 格式或代理链接。'
+    };
+  }
+
+  return { success: true, data: proxies, error: null };
 }
 
 /**
