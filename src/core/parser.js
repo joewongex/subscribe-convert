@@ -64,7 +64,7 @@ export function parse(rawText) {
           proxies.push(proxy);
           hasValidLinks = true;
         }
-      } else if (link.startsWith('hysteria2://')) {
+      } else if (link.startsWith('hysteria2://') || link.startsWith('hy2://')) {
         const proxy = _parseHysteria2(link);
         if (proxy) {
           proxies.push(proxy);
@@ -268,7 +268,15 @@ function _parseTrojan(link) {
  * @returns {object|null} A Mihomo proxy object or null if parsing fails.
  */
 function _parseHysteria2(link) {
-  const url = new URL(link);
+  // 处理 hy2:// 协议，将其转换为标准的 http:// 格式以便 URL 解析
+  let normalizedLink = link;
+  if (link.startsWith('hy2://')) {
+    normalizedLink = link.replace('hy2://', 'http://');
+  } else if (link.startsWith('hysteria2://')) {
+    normalizedLink = link.replace('hysteria2://', 'http://');
+  }
+
+  const url = new URL(normalizedLink);
   const params = url.searchParams;
 
   const proxy = {
@@ -279,8 +287,13 @@ function _parseHysteria2(link) {
     password: url.username,
     auth: url.username,
     'skip-cert-verify': params.get('insecure') === '1' || true, // Default to true based on user feedback
-    sni: params.get('sni') || url.hostname,
   };
+
+  // 只有当 sni 参数存在时才添加 sni 字段
+  const sniParam = params.get('sni');
+  if (sniParam) {
+    proxy.sni = sniParam;
+  }
 
   return proxy;
 }
