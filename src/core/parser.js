@@ -210,12 +210,15 @@ function _safeBase64Decode(b64) {
           try {
               const decodedPart = _safeBase64Decode(url.username);
               const parts = decodedPart.split(':');
-              method = parts;
-              password = parts;
+              if (parts.length === 2) {
+                method = parts[0];
+                password = parts[1];
+              }
           } catch (e) {
               // It might not be Base64, but a user:pass format
-              const userPass = _safeBase64Decode(link.substring('ss://'.length).split('@'));
-              [method, password] = userPass.split(':');
+              const userPassPart = link.substring('ss://'.length).split('@')[0];
+              const decodedUserPass = _safeBase64Decode(userPassPart);
+              [method, password] = decodedUserPass.split(':');
           }
       } else {
           method = url.username;
